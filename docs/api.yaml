@@ -1,0 +1,200 @@
+openapi: 3.0.4
+info:
+  title: bookish-guacamole
+  version: 0.0.0
+servers:
+  - url: https://localhost:8643/
+tags:
+  - name: monitoring
+    description: Operations for monitoring service
+  - name: auth
+  - name: sessions
+  - name: users
+paths:
+  /health:
+    get:
+      tags:
+        - monitoring
+      summary: Cheking if the service is still alive.
+      responses:
+        "200":
+          description: "Service is alive."
+  /version:
+    get:
+      tags:
+        - monitoring
+      summary: Get current version of service.
+      responses:
+        "200":
+          description: "Returns current version of service."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  version:
+                    type: string
+                    example: "0.3.2"
+
+  /auth:
+    post:
+      tags:
+        - auth
+      summary: Create session
+      parameters:
+        - $ref: "#/components/parameters/AcceptVersion"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                  example: "01983784-e5ff-786a-bdd0-ab93f98362d2"
+                  description: "UUIDv7"
+        required: true
+      responses:
+        "200":
+          description: "Successful creation of a new session"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PairOfTokens"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "404":
+          description: "User with this ID not found"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Err"
+  /sessions/current:
+    delete:
+      tags:
+        - sessions
+      summary: "Close current session"
+      description: "Close current session and delete it from databases"
+      parameters:
+        - $ref: "#/components/parameters/AcceptVersion"
+      responses:
+        "200":
+          description: "Request success"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+      security:
+        - BearerAuth: []
+    put:
+      tags:
+        - sessions
+      summary: "Update session"
+      parameters:
+        - $ref: "#/components/parameters/AcceptVersion"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PairOfTokens"
+      description: "Request for a new pair of tokens (access, refresh)"
+      responses:
+        "200":
+          description: "Request success"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PairOfTokens"
+        "404":
+          $ref: "#/components/responses/BadRequestError"
+  /me:
+    get:
+      summary: Get current user information
+      description: Get user ID from current session
+      parameters:
+        - $ref: "#/components/parameters/AcceptVersion"
+      tags:
+        - users
+      responses:
+        "200":
+          description: "Request success"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserInfo"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+      security:
+        - BearerAuth: []
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: User JWT access token
+  parameters:
+    AcceptVersion:
+      in: header
+      name: Accept-Version
+      required: true
+      schema:
+        type: string
+        description: "Version as semver"
+        default:
+          $ref: "#/info/version"
+  responses:
+    UnauthorizedError:
+      description: |
+        Authentification error:
+        - Invalid/overdue token.
+        - No Authorization header.
+        - Invalid Authorization header format.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Err"
+    BadRequestError:
+      description: |
+        Request is incorrect:
+        - Invalid parameters
+        - Invalid request body
+        - Invalid version
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Err"
+  schemas:
+    Err:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: integer
+              format: int32
+              example: -1
+            reason:
+              type: string
+              example: "Generic error. Some useful information for human... or not."
+    PairOfTokens:
+      type: object
+      properties:
+        token:
+          type: object
+          properties:
+            access:
+              type: string
+              example: "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJ0eXAiOiJhY2Nlc3MiLCJleHAiOjE3NTMzNzI5NzcsImp0aSI6IjAxOTgzZDFlLWFjNzUtN2JhNS05MDNhLTZmOWFlZDI1YWUxZiJ9.ax2Tt7bYufi0YW3V_Gu6-HQTd4nlAEb7K-qwuEBuLKg0yIX0mklBaLwp_5ra6sGAE8EvlbvWMExeYS79qdACBg"
+              description: "JWT access token"
+            refresh:
+              type: string
+              example: "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJ0eXAiOiJyZWZyZXNoIiwiZXhwIjoxNzU1OTY0MDc3LCJqdGkiOiIwMTk4M2QxZS1hYzc1LTdiYTUtOTAzYS02ZjlhZWQyNWFlMWYifQ.U6OyupA_BkVWe_hANzZpqixvw0WpOotqEoeFXhsYRGigHb_o8hJ9LA2JmsdHSJLmeYCQJ8_tiLCyX2OIpa0gDw"
+              description: "JWT refresh token"
+    UserInfo:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 01983784-e5ff-786a-bdd0-ab93f98362d2
+          description: "User ID as UUIDv7"

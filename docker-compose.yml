@@ -1,0 +1,30 @@
+services:
+  web:
+    image: ghcr.io/qcrg/bookish-guacamole:latest
+    environment:
+      LOG_LEVEL: "${LOG_LEVEL}"
+      BHGL_PORT: "${BHGL_PORT}"
+      BHGL_DATABASE_TLS_MOD: "${BHGL_DATABASE_TLS_MOD}"
+      BHGL_DATABASE_HOST: "postgres"
+      BHGL_DATABASE_PORT: "${BHGL_DATABASE_PORT}"
+      BHGL_DATABASE_USERNAME: "${BHGL_DATABASE_USERNAME}"
+      BHGL_DATABASE_PASSWD: "${BHGL_DATABASE_PASSWD}"
+      BHGL_DATABASE_NAME: "${BHGL_DATABASE_NAME}"
+      BHGL_TOKEN_SEED: "${BHGL_TOKEN_SEED}"
+      BHGL_CERT_PATH: "${BHGL_CERT_PATH}"
+      BHGL_SKEY_PATH: "${BHGL_SKEY_PATH}"
+    ports:
+      - 8643:8643
+
+    depends_on:
+      - postgres
+  postgres:
+    image: postgres:14.18
+    environment:
+      POSTGRES_USER: ${BHGL_DATABASE_USERNAME}
+      POSTGRES_PASSWORD: ${BHGL_DATABASE_PASSWD}
+      POSTGRES_DB: ${BHGL_DATABASE_NAME}
+    volumes:
+      - ./dev/postgres/init/:/docker-entrypoint-initdb.d
+    ports:
+      - 5432:5432
